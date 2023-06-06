@@ -13,62 +13,67 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const supertest_1 = __importDefault(require("supertest"));
-const controllers_1 = require("./src/controllers/controllers");
 const express_1 = __importDefault(require("express"));
+const routes_1 = __importDefault(require("./src/routes/routes"));
 const app = (0, express_1.default)();
-app.get('/', controllers_1.getRoot);
-app.post('/uber/login', controllers_1.postLogin);
-app.get('/uber/profile/:access_token', controllers_1.getProfile);
-describe('GET /', () => {
-    it('should return "Hello Palenca"', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app).get('/');
-        expect(response.status).toBe(200);
-        expect(response.text).toBe('Hello Palenca');
-    }));
-});
-describe('POST /uber/login', () => {
-    it('should return a success response with access_token', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app)
-            .post('/uber/login')
-            .send({ email: 'pierre@palenca.com', password: 'MyPwdChingon123' });
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('message', 'SUCCESS');
-        expect(response.body).toHaveProperty('access_token');
-    }));
-    it('should return an error response for invalid email', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app)
-            .post('/uber/login')
-            .send({ email: 'invalidemail', password: 'MyPwdChingon123' });
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('message', 'INVALID_EMAIL');
-    }));
-    it('should return an error response for invalid password', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app)
-            .post('/uber/login')
-            .send({ email: 'pierre@palenca.com', password: '123' });
-        expect(response.status).toBe(400);
-        expect(response.body).toHaveProperty('message', 'INVALID_PASSWORD');
-    }));
-    it('should return an error response for incorrect credentials', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app)
-            .post('/uber/login')
-            .send({ email: 'test@test.com', password: 'password123' });
-        expect(response.status).toBe(401);
-        expect(response.body).toHaveProperty('message', 'CREDENTIALS_INVALID');
-    }));
-});
-describe('GET /uber/profile/:access_token', () => {
-    it('should return the profile for a valid access_token', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app).get('/uber/profile/cTV0aWFuQ2NqaURGRE82UmZXNVBpdTRxakx3V1F5');
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('message', 'SUCCESS');
-        expect(response.body).toHaveProperty('platform', 'uber');
-        expect(response.body).toHaveProperty('profile');
-    }));
-    it('should return an error response for an invalid access_token', () => __awaiter(void 0, void 0, void 0, function* () {
-        const response = yield (0, supertest_1.default)(app).get('/uber/profile/invalid_token');
-        expect(response.status).toBe(401);
-        expect(response.body).toHaveProperty('message', 'Invalid access token');
-    }));
+app.use(express_1.default.json());
+app.use(routes_1.default);
+describe('app tests', () => {
+    describe('POST /uber/login', () => {
+        it('responds with 200 and a success message for a valid email and password', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app)
+                .post('/uber/login')
+                .send({ email: 'pierre@palenca.com', password: 'MyPwdChingon123' });
+            expect(response.status).toBe(200);
+            expect(response.body.message).toBe('SUCCESS');
+            expect(response.body.access_token).toBeTruthy();
+        }));
+        it('responds with 400 and an error message for an invalid email', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app)
+                .post('/uber/login')
+                .send({ email: 'invalid_email', password: 'password' });
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('INVALID_EMAIL');
+            expect(response.body.details).toBe('Email is not valid');
+        }));
+        it('responds with 400 and an error message for a password with less than 6 characters', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app)
+                .post('/uber/login')
+                .send({ email: 'valid_email@example.com', password: '12345' });
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('INVALID_PASSWORD');
+            expect(response.body.details).toBe('Password must be more than 5 characters');
+        }));
+        it('responds with 401 and an error message for an incorrect email or password', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app).post('/uber/login').send({
+                email: 'incorrect_email@example.com',
+                password: 'incorrect_password',
+            });
+            expect(response.status).toBe(401);
+            expect(response.body.message).toBe('CREDENTIALS_INVALID');
+            expect(response.body.details).toBe('Incorrect username or password');
+        }));
+    });
+    describe('GET /uber/profile/:access_token', () => {
+        it('responds with 200 and the user profile for a valid access token', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app).get('/uber/profile/cTV0aWFuQ2NqaURGRE82UmZXNVBpdTRxakx3V1F5');
+            expect(response.status).toBe(200);
+            expect(response.body.message).toBe('SUCCESS');
+            expect(response.body.platform).toBe('uber');
+            expect(response.body.profile).toBeTruthy();
+        }));
+        it('responds with 401 and an error message for an invalid access token', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app).get('/uber/profile/invalid_access_token');
+            expect(response.status).toBe(401);
+            expect(response.body.message).toBe('Invalid access token');
+        }));
+    });
+    describe('GET /', () => {
+        it('responds with Hello Palenca', () => __awaiter(void 0, void 0, void 0, function* () {
+            const response = yield (0, supertest_1.default)(app).get('/');
+            expect(response.status).toBe(200);
+            expect(response.text).toBe('Hello Palenca');
+        }));
+    });
 });
 //# sourceMappingURL=app.test.js.map
