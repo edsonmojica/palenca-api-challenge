@@ -5,15 +5,20 @@ import cors from 'cors';
 class Server {
   private app: Application;
   private port: string;
-  private apiPaths = {
-    root: '/',
-    login: '/uber/login',
-    profile: '/uber/profile/:access_token',
+  private apiPaths: {
+    root: string;
+    login: string;
+    profile: string;
   };
 
   constructor() {
     this.app = express();
     this.port = process.env.PORT || '8000';
+    this.apiPaths = {
+      root: '/',
+      login: '/uber/login',
+      profile: '/uber/profile/:access_token',
+    };
     this.middlewares();
     this.routes();
   }
